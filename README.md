@@ -1,50 +1,49 @@
-# Welcome to your Expo app 👋
+# Minimal Calendar (Expo + TypeScript)
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+A minimal calendar app built with Expo Router, featuring:
+- Monthly grid calendar with selectable dates
+- Anniversary CRUD (all-day events)
+- Anniversary import/export as `.ics` via ical.js
+- “Events” tab listing only future dates that have events
 
-## Get started
-
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Run
 
 ```bash
-npm run reset-project
+npm install
+npx expo start
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Usage
 
-## Learn more
+### Calendar tab (日历)
 
-To learn more about developing your project with Expo, look at the following resources:
+- Tap a date to select it.
+- Top-right actions:
+  - Download icon: import anniversaries from an `.ics` file
+  - Upload icon: export anniversaries to an `.ics` file (share sheet)
+  - Plus icon: create/edit the anniversary for the selected date
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+### Anniversary modal (纪念日)
 
-## Join the community
+- Title is required, note is optional.
+- One anniversary per date (import also dedupes by date).
 
-Join our community of developers creating universal apps.
+### Events tab (事件)
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- Shows only future dates (>= today) that actually have events/anniversaries.
+- Groups items by date and shows up to 3 per day (with “…更多” if more).
+
+## Notes
+
+- Safe area handling uses `react-native-safe-area-context` and requires a root `SafeAreaProvider` (`app/_layout.tsx`).
+- File IO uses `expo-file-system/legacy` for best Expo Go compatibility.
+- iOS simulator share sheet behavior can differ from real devices; exported files are still saved to the app directory and the UI will show the file path if sharing fails.
+
+## Key Files
+
+- `app/_layout.tsx` providers and navigation stack
+- `components/screens/calendar-screen.tsx` calendar screen + import/export actions
+- `components/screens/events-screen.tsx` events list screen (only dates with events)
+- `components/screens/anniversary-modal-screen.tsx` anniversary editor modal
+- `utils/icalUtils.ts` ICS parse/export (ical.js)
+- `utils/calendarUtils.ts` calendar grid + date helpers
