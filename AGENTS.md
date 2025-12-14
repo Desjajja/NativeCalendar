@@ -3,10 +3,11 @@ This document is the working spec and conventions for the Minimal Calendar app (
 ## Project Overview
 
 A minimal, educational-grade cross-platform calendar app that:
-- Shows a monthly grid calendar.
+- Shows calendar views: month / week / day.
 - Supports selecting a date to view items for that day.
 - Supports creating/editing/deleting multiple “anniversaries” per day (all‑day or timed range).
 - Supports importing/exporting anniversaries as `.ics` (iCalendar) files.
+- Supports optional local reminders for anniversaries (via `expo-notifications`).
 - Provides a second tab that groups by dates that have anniversaries.
 
 No backend. All logic is client-side.
@@ -25,6 +26,9 @@ MyCalendarApp/
 ├── components/
 │   ├── Calendar.tsx               # Re-export of month calendar component
 │   ├── calendar/                  # Calendar UI implementation
+│   │   ├── month-calendar.tsx
+│   │   ├── week-calendar.tsx
+│   │   └── day-calendar.tsx
 │   ├── screens/                   # Screen components (calendar/events/modal)
 │   ├── themed-text.tsx            # Theme-aware text
 │   ├── themed-view.tsx            # Theme-aware view
@@ -34,7 +38,8 @@ MyCalendarApp/
 └── utils/
     ├── calendarUtils.ts           # Date math + keys
     ├── colorUtils.ts              # Small styling helpers
-    └── icalUtils.ts               # ICS parse/export via ical.js
+    ├── icalUtils.ts               # ICS parse/export via ical.js
+    └── notifications.ts           # Local reminder scheduling (expo-notifications)
 ```
 
 ## Core Dependencies
@@ -43,6 +48,7 @@ MyCalendarApp/
 - `expo-document-picker`: user selects `.ics` file.
 - `expo-file-system/legacy`: read/write ICS files in Expo Go reliably.
 - `expo-sharing`: share exported ICS via system sheet.
+- `expo-notifications`: schedule local reminders.
 - `react-native-safe-area-context`: safe area insets (requires `SafeAreaProvider` at root).
 
 ## Data Model
@@ -56,6 +62,10 @@ export interface CalendarEvent {
   end?: Date;
   description?: string;
   type?: 'event' | 'anniversary';
+  allDay?: boolean;
+  reminderEnabled?: boolean;
+  reminderMinutesBefore?: number;
+  notificationId?: string;
 }
 ```
 
@@ -68,10 +78,12 @@ Conventions:
 - Calendar tab (`components/screens/calendar-screen.tsx`)
   - Tap a date to select.
   - Long-press a date to open the editor modal.
+  - Switch view mode: month / week / day.
   - Header actions: import anniversaries, export anniversaries, add/edit anniversary (modal).
 - Modal (`components/screens/anniversary-modal-screen.tsx`)
   - List all anniversaries for the date; select to edit; create new; delete.
   - Time mode is mutually exclusive: all-day vs start/end time.
+  - Optional reminders schedule a local notification (permissions required).
 - Events tab (`components/screens/events-screen.tsx`)
   - Renders only dates that have anniversaries; shows all events for that date.
 

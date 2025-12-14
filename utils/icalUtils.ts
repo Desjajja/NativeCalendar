@@ -24,6 +24,15 @@ export interface CalendarEvent {
    * whether DTSTART/DTEND are exported as DATE vs DATE-TIME.
    */
   allDay?: boolean;
+  /**
+   * Local reminder configuration (not exported to ICS).
+   */
+  reminderEnabled?: boolean;
+  reminderMinutesBefore?: number;
+  /**
+   * Scheduled notification id returned by expo-notifications.
+   */
+  notificationId?: string;
 }
 
 const toDate = (icalTime: ICAL.Time): Date => new Date(icalTime.toJSDate());

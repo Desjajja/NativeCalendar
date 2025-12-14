@@ -13,11 +13,18 @@ import { styles } from './month-calendar.styles';
 
 interface MonthCalendarProps {
   initialDate?: Date;
+  /**
+   * Optional controlled cursor for month navigation. When provided, the header
+   * month/year reflects this date and navigation calls `onChangeCursorDate`.
+   */
+  cursorDate?: Date;
+  onChangeCursorDate?: (date: Date) => void;
   events?: CalendarEvent[];
   selectedDate?: Date;
   onSelectDate?: (date: Date) => void;
   onLongPressDate?: (date: Date) => void;
   headerRight?: React.ReactNode;
+  headerAccessory?: React.ReactNode;
 }
 
 type DayMarkers = { hasAnniversary: boolean; hasEvent: boolean };
@@ -41,11 +48,14 @@ const buildMarkers = (events: CalendarEvent[] | undefined): Map<string, DayMarke
 
 export function Calendar({
   initialDate = new Date(),
+  cursorDate,
+  onChangeCursorDate,
   events,
   selectedDate,
   onSelectDate,
   onLongPressDate,
   headerRight,
+  headerAccessory,
 }: MonthCalendarProps) {
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
@@ -53,14 +63,27 @@ export function Calendar({
   const mutedTextColor = colorScheme === 'dark' ? 'rgba(236,237,238,0.45)' : '#6b7280';
   const navButtonBackgroundColor = colorScheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.04)';
 
-  const [cursor, setCursor] = React.useState(startOfDay(initialDate));
+  const [internalCursor, setInternalCursor] = React.useState(startOfDay(initialDate));
+  const cursor = startOfDay(cursorDate ?? internalCursor);
+
+  const setCursor = React.useCallback(
+    (next: Date) => {
+      const normalized = startOfDay(next);
+      if (cursorDate && onChangeCursorDate) {
+        onChangeCursorDate(normalized);
+        return;
+      }
+      setInternalCursor(normalized);
+    },
+    [cursorDate, onChangeCursorDate]
+  );
   const weeks = useMemo(() => generateCalendar(cursor.getFullYear(), cursor.getMonth()), [cursor]);
   const days = useMemo(() => weeks.flat(), [weeks]);
   const markersByDateKey = useMemo(() => buildMarkers(events), [events]);
   const today = useMemo(() => startOfDay(new Date()), []);
 
-  const handlePrev = () => setCursor((prev) => startOfDay(new Date(prev.getFullYear(), prev.getMonth() - 1, 1)));
-  const handleNext = () => setCursor((prev) => startOfDay(new Date(prev.getFullYear(), prev.getMonth() + 1, 1)));
+  const handlePrev = () => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1));
+  const handleNext = () => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1));
 
   const lastLongPressDateKey = React.useRef<string | null>(null);
 
@@ -95,6 +118,8 @@ export function Calendar({
         </View>
       </View>
 
+      {headerAccessory ? <View>{headerAccessory}</View> : null}
+
       <View style={styles.weekdayRow}>
         {/* Use index in the key because labels repeat ("S", "T"). */}
         {WEEKDAYS.map((label, index) => (
@@ -125,7 +150,7 @@ export function Calendar({
                   return;
                 }
                 onSelectDate?.(date);
-                if (!item.isCurrentMonth) setCursor(startOfDay(new Date(date.getFullYear(), date.getMonth(), 1)));
+                if (!item.isCurrentMonth) setCursor(new Date(date.getFullYear(), date.getMonth(), 1));
               }}
               onLongPress={() => {
                 lastLongPressDateKey.current = dateKey;

@@ -9,6 +9,7 @@ import { useCalendarEvents } from '@/context/calendar-events-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { fromDateKey, isSameDay, startOfDay } from '@/utils/calendarUtils';
 import { CalendarEvent } from '@/utils/icalUtils';
+import { cancelReminder, ensureReminderPermissions, scheduleReminder } from '@/utils/notifications';
 
 import { styles } from './anniversary-modal-screen.styles';
 
@@ -35,7 +36,15 @@ const deriveAllDay = (event: CalendarEvent): boolean => {
 
 const toDraft = (event: CalendarEvent | null) => {
   if (!event) {
-    return { summary: '', description: '', allDay: true, startTime: '', endTime: '' };
+    return {
+      summary: '',
+      description: '',
+      allDay: true,
+      startTime: '',
+      endTime: '',
+      reminderEnabled: false,
+      reminderMinutesBefore: 0,
+    };
   }
 
   const allDay = deriveAllDay(event);
@@ -45,6 +54,8 @@ const toDraft = (event: CalendarEvent | null) => {
     allDay,
     startTime: allDay ? '' : formatTime(event.start),
     endTime: !allDay && event.end ? formatTime(event.end) : '',
+    reminderEnabled: !!event.reminderEnabled,
+    reminderMinutesBefore: event.reminderMinutesBefore ?? 0,
   };
 };
 
@@ -52,7 +63,7 @@ export default function AnniversaryModalScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
 
-  const { events, upsertAnniversary, deleteEvent } = useCalendarEvents();
+  const { events, upsertAnniversary, deleteEvent, patchEvent } = useCalendarEvents();
   const params = useLocalSearchParams<{ date?: string | string[] }>();
 
   const targetDate = React.useMemo(() => {
@@ -87,6 +98,8 @@ export default function AnniversaryModalScreen() {
   const [allDay, setAllDay] = React.useState(true);
   const [startTime, setStartTime] = React.useState('');
   const [endTime, setEndTime] = React.useState('');
+  const [reminderEnabled, setReminderEnabled] = React.useState(false);
+  const [reminderMinutesBefore, setReminderMinutesBefore] = React.useState<number>(0);
 
   const editingDraft = React.useMemo(() => toDraft(editingEvent), [editingEvent]);
 
@@ -96,6 +109,8 @@ export default function AnniversaryModalScreen() {
     setAllDay(editingDraft.allDay);
     setStartTime(editingDraft.startTime);
     setEndTime(editingDraft.endTime);
+    setReminderEnabled(editingDraft.reminderEnabled);
+    setReminderMinutesBefore(editingDraft.reminderMinutesBefore);
   }, [editingDraft]);
 
   const cardBorderColor = colorScheme === 'dark' ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.12)';
@@ -126,7 +141,7 @@ export default function AnniversaryModalScreen() {
     return true;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const nextSummary = summary.trim();
     if (!nextSummary) {
       Alert.alert('请输入纪念日标题');
@@ -135,7 +150,9 @@ export default function AnniversaryModalScreen() {
 
     if (!allDay && !validateTimed()) return;
 
-    upsertAnniversary({
+    const previousNotificationId = editingEvent?.notificationId;
+
+    const nextEvent = upsertAnniversary({
       id: editingEvent?.id,
       date: targetDate,
       summary: nextSummary,
@@ -143,7 +160,37 @@ export default function AnniversaryModalScreen() {
       allDay,
       startTime: allDay ? undefined : startTime,
       endTime: allDay ? undefined : endTime,
+      reminderEnabled,
+      reminderMinutesBefore,
+      notificationId: previousNotificationId,
     });
+
+    // Reschedule reminder if enabled. If permissions are denied, keep the event but disable reminders.
+    if (previousNotificationId) {
+      await cancelReminder(previousNotificationId);
+      patchEvent(nextEvent.id, { notificationId: undefined });
+    }
+
+    if (reminderEnabled) {
+      const granted = await ensureReminderPermissions();
+      if (!granted) {
+        patchEvent(nextEvent.id, { reminderEnabled: false, reminderMinutesBefore: undefined, notificationId: undefined });
+        Alert.alert('无法开启提醒', '请在系统设置中允许通知权限。');
+        router.back();
+        return;
+      }
+
+      const scheduledId = await scheduleReminder({ ...nextEvent, reminderEnabled: true, reminderMinutesBefore });
+      if (!scheduledId) {
+        patchEvent(nextEvent.id, { notificationId: undefined, reminderEnabled: false, reminderMinutesBefore: undefined });
+        Alert.alert('提醒未设置', '提醒时间早于当前时间，请调整日期或时间后再开启提醒。');
+        router.back();
+        return;
+      }
+
+      patchEvent(nextEvent.id, { notificationId: scheduledId, reminderEnabled: true, reminderMinutesBefore });
+    }
+
     router.back();
   };
 
@@ -155,7 +202,8 @@ export default function AnniversaryModalScreen() {
       {
         text: '删除',
         style: 'destructive',
-        onPress: () => {
+        onPress: async () => {
+          await cancelReminder(editingEvent.notificationId);
           deleteEvent(editingEvent.id);
           router.back();
         },
@@ -289,6 +337,36 @@ export default function AnniversaryModalScreen() {
             editable={!allDay}
             style={[styles.input, styles.timeInput, { borderColor: cardBorderColor, color: theme.text }]}
           />
+        </View>
+
+        <View style={styles.reminderRow}>
+          <Pressable
+            onPress={() => setReminderEnabled((prev) => !prev)}
+            style={[styles.toggle, reminderEnabled ? { backgroundColor: theme.tint } : { borderColor: cardBorderColor }]}>
+            <ThemedText type="defaultSemiBold" style={{ color: reminderEnabled ? primaryTextColor : theme.text }}>
+              提醒
+            </ThemedText>
+          </Pressable>
+          <View style={[styles.reminderOptions, !reminderEnabled ? { opacity: 0.45 } : null]}>
+            {[0, 5, 15, 60].map((minutes) => (
+              <Pressable
+                key={minutes}
+                disabled={!reminderEnabled || allDay}
+                onPress={() => setReminderMinutesBefore(minutes)}
+                style={[
+                  styles.reminderChip,
+                  { borderColor: cardBorderColor },
+                  reminderMinutesBefore === minutes && reminderEnabled && !allDay ? { backgroundColor: `${theme.tint}22` } : null,
+                ]}>
+                <ThemedText style={{ color: theme.icon }}>
+                  {minutes === 0 ? '准时' : `${minutes}m`}
+                </ThemedText>
+              </Pressable>
+            ))}
+            {allDay ? (
+              <ThemedText style={{ color: theme.icon }}>全天默认 09:00</ThemedText>
+            ) : null}
+          </View>
         </View>
       </View>
 

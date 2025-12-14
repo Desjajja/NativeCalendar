@@ -85,6 +85,21 @@ export const styles = StyleSheet.create({
   timeInput: {
     flex: 1,
   },
+  reminderRow: {
+    gap: 10,
+  },
+  reminderOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: 8,
+  },
+  reminderChip: {
+    borderWidth: 1,
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
   actions: {
     flexDirection: 'row',
     gap: 12,

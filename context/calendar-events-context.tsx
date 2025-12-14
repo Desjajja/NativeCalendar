@@ -9,12 +9,16 @@ type AnniversaryInput = {
   allDay: boolean;
   startTime?: string;
   endTime?: string;
+  reminderEnabled?: boolean;
+  reminderMinutesBefore?: number;
+  notificationId?: string;
 };
 
 type CalendarEventsContextValue = {
   events: CalendarEvent[];
-  upsertAnniversary: (input: { id?: string; date: Date } & AnniversaryInput) => void;
+  upsertAnniversary: (input: { id?: string; date: Date } & AnniversaryInput) => CalendarEvent;
   deleteEvent: (id: string) => void;
+  patchEvent: (id: string, patch: Partial<CalendarEvent>) => void;
   /**
    * Merge anniversaries imported from ICS, deduping by UID (`event.id`).
    */
@@ -55,6 +59,9 @@ export function CalendarEventsProvider({ children }: { children: React.ReactNode
       description,
       type: 'anniversary',
       allDay: input.allDay,
+      reminderEnabled: input.reminderEnabled,
+      reminderMinutesBefore: input.reminderMinutesBefore,
+      notificationId: input.notificationId,
       start: date,
     };
 
@@ -82,10 +89,21 @@ export function CalendarEventsProvider({ children }: { children: React.ReactNode
       const kept = prev.filter((event) => event.id !== id);
       return [...kept, next].sort(byStartAsc);
     });
+
+    return next;
   }, []);
 
   const deleteEvent = React.useCallback((id: string) => {
     setEvents((prev) => prev.filter((event) => event.id !== id));
+  }, []);
+
+  const patchEvent = React.useCallback((id: string, patch: Partial<CalendarEvent>) => {
+    setEvents((prev) =>
+      prev.map((event) => {
+        if (event.id !== id) return event;
+        return { ...event, ...patch };
+      })
+    );
   }, []);
 
   const mergeAnniversaries = React.useCallback((anniversaries: CalendarEvent[]) => {
@@ -109,8 +127,8 @@ export function CalendarEventsProvider({ children }: { children: React.ReactNode
   }, []);
 
   const value = React.useMemo(
-    () => ({ events, upsertAnniversary, deleteEvent, mergeAnniversaries }),
-    [events, upsertAnniversary, deleteEvent, mergeAnniversaries]
+    () => ({ events, upsertAnniversary, deleteEvent, patchEvent, mergeAnniversaries }),
+    [events, upsertAnniversary, deleteEvent, patchEvent, mergeAnniversaries]
   );
 
   return <CalendarEventsContext.Provider value={value}>{children}</CalendarEventsContext.Provider>;

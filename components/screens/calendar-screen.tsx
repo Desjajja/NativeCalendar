@@ -5,10 +5,13 @@ import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { router } from 'expo-router';
 
-import { Calendar } from '@/components/Calendar';
+import { DayCalendar } from '@/components/calendar/day-calendar';
+import { Calendar as MonthCalendar } from '@/components/calendar/month-calendar';
+import { WeekCalendar } from '@/components/calendar/week-calendar';
 import { SafeAreaPage } from '@/components/safe-area-page';
 import { ThemedText } from '@/components/themed-text';
 import { IconActionButton } from '@/components/ui/icon-action-button';
+import { SegmentedControl } from '@/components/ui/segmented-control';
 import { Colors } from '@/constants/theme';
 import { useCalendarEvents } from '@/context/calendar-events-context';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -17,6 +20,23 @@ import { withAlpha } from '@/utils/colorUtils';
 import { exportEventsToIcs, parseIcs } from '@/utils/icalUtils';
 
 import { styles } from './calendar-screen.styles';
+
+type CalendarViewMode = 'month' | 'week' | 'day';
+
+const pad2 = (value: number) => String(value).padStart(2, '0');
+const formatTime = (date: Date) => `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+
+const deriveAllDay = (event: { allDay?: boolean; type?: string; start: Date; end?: Date }): boolean => {
+  if (typeof event.allDay === 'boolean') return event.allDay;
+  if (event.type !== 'anniversary') return false;
+  return event.start.getHours() === 0 && event.start.getMinutes() === 0 && !event.end;
+};
+
+const formatEventTime = (event: { allDay?: boolean; type?: string; start: Date; end?: Date }): string => {
+  if (deriveAllDay(event)) return '全天';
+  if (event.end) return `${formatTime(event.start)}–${formatTime(event.end)}`;
+  return formatTime(event.start);
+};
 
 export default function CalendarScreen() {
   const colorScheme = useColorScheme() ?? 'light';
@@ -28,6 +48,13 @@ export default function CalendarScreen() {
 
   const { events, mergeAnniversaries } = useCalendarEvents();
   const [selectedDate, setSelectedDate] = React.useState(startOfDay(new Date()));
+  const [viewMode, setViewMode] = React.useState<CalendarViewMode>('month');
+  const [monthCursorDate, setMonthCursorDate] = React.useState(() => new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
+
+  React.useEffect(() => {
+    if (viewMode !== 'month') return;
+    setMonthCursorDate(new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1));
+  }, [selectedDate, viewMode]);
 
   const selectedEvents = React.useMemo(() => {
     const selectedKey = toDateKey(selectedDate);
@@ -135,16 +162,61 @@ export default function CalendarScreen() {
     </>
   );
 
+  const headerAccessory = (
+    <SegmentedControl<CalendarViewMode>
+      options={[
+        { value: 'month', label: '月视图', accessibilityLabel: '切换到月视图' },
+        { value: 'week', label: '周视图', accessibilityLabel: '切换到周视图' },
+        { value: 'day', label: '日视图', accessibilityLabel: '切换到日视图' },
+      ]}
+      value={viewMode}
+      onChange={setViewMode}
+      style={styles.viewMode}
+    />
+  );
+
   return (
     <SafeAreaPage style={styles.container}>
       <View style={[styles.card, { borderColor: cardBorderColor, backgroundColor: cardBackgroundColor }]}>
-        <Calendar
-          events={events}
-          selectedDate={selectedDate}
-          onSelectDate={setSelectedDate}
-          onLongPressDate={openAnniversaryEditorForDate}
-          headerRight={headerRight}
-        />
+        {viewMode === 'month' ? (
+          <MonthCalendar
+            events={events}
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
+            onLongPressDate={openAnniversaryEditorForDate}
+            headerRight={headerRight}
+            headerAccessory={headerAccessory}
+            cursorDate={monthCursorDate}
+            onChangeCursorDate={(next) => {
+              const normalized = startOfDay(next);
+              setMonthCursorDate(new Date(normalized.getFullYear(), normalized.getMonth(), 1));
+
+              setSelectedDate((prev) => {
+                const sameMonth = prev.getFullYear() === normalized.getFullYear() && prev.getMonth() === normalized.getMonth();
+                if (sameMonth) return prev;
+                return startOfDay(new Date(normalized.getFullYear(), normalized.getMonth(), 1));
+              });
+            }}
+          />
+        ) : viewMode === 'week' ? (
+          <WeekCalendar
+            events={events}
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
+            onLongPressDate={openAnniversaryEditorForDate}
+            headerRight={headerRight}
+            headerAccessory={headerAccessory}
+          />
+        ) : (
+          <DayCalendar
+            events={events}
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
+            onLongPressDate={openAnniversaryEditorForDate}
+            headerRight={headerRight}
+            headerAccessory={headerAccessory}
+          />
+        )}
       </View>
 
       <View style={[styles.detailCard, { borderColor: cardBorderColor, backgroundColor: cardBackgroundColor }]}>
@@ -170,7 +242,19 @@ export default function CalendarScreen() {
                     },
                   ]}
                 />
-                <ThemedText>{event.summary}</ThemedText>
+                <View style={styles.detailContent}>
+                  <View style={styles.detailTop}>
+                    <ThemedText numberOfLines={1} type="defaultSemiBold" style={styles.detailSummary}>
+                      {event.summary}
+                    </ThemedText>
+                    <ThemedText style={[styles.detailTime, { color: theme.icon }]}>{formatEventTime(event)}</ThemedText>
+                  </View>
+                  {event.description ? (
+                    <ThemedText numberOfLines={1} style={[styles.detailDescription, { color: theme.icon }]}>
+                      {event.description}
+                    </ThemedText>
+                  ) : null}
+                </View>
               </View>
             ))}
           </View>

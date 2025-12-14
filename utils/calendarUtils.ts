@@ -20,6 +20,13 @@ export const addDays = (date: Date, amount: number): Date => {
   return copy;
 };
 
+export const startOfWeek = (date: Date, weekStartsOn: number = 0): Date => {
+  const normalized = startOfDay(date);
+  const day = normalized.getDay();
+  const diff = (day - weekStartsOn + 7) % 7;
+  return addDays(normalized, -diff);
+};
+
 export const toDateKey = (date: Date): string => {
   const normalized = startOfDay(date);
   const year = normalized.getFullYear();
