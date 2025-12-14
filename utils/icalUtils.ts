@@ -19,9 +19,32 @@ export interface CalendarEvent {
    * Regular timed events use DATE-TIME.
    */
   type?: 'event' | 'anniversary';
+  /**
+   * When `true`, the event is an all-day item. For anniversaries, this controls
+   * whether DTSTART/DTEND are exported as DATE vs DATE-TIME.
+   */
+  allDay?: boolean;
 }
 
 const toDate = (icalTime: ICAL.Time): Date => new Date(icalTime.toJSDate());
+
+const normalizeText = (value: unknown): string | undefined => {
+  if (typeof value !== 'string') return undefined;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : undefined;
+};
+
+const isAnniversaryComponent = (vevent: ICAL.Component): boolean => {
+  const xType = normalizeText(vevent.getFirstPropertyValue('x-minical-type'));
+  if (xType?.toUpperCase() === 'ANNIVERSARY') return true;
+
+  const categories = normalizeText(vevent.getFirstPropertyValue('categories'));
+  if (!categories) return false;
+  return categories
+    .split(',')
+    .map((item) => item.trim().toUpperCase())
+    .includes('ANNIVERSARY');
+};
 
 export const parseIcs = (icsString: string): CalendarEvent[] => {
   try {
@@ -33,6 +56,7 @@ export const parseIcs = (icsString: string): CalendarEvent[] => {
       const event = new ICAL.Event(vevent);
       // When DTSTART/DTEND are DATE (no time), ical.js marks `isDate = true`.
       const isAllDay = !!event.startDate?.isDate;
+      const isAnniversary = isAllDay || isAnniversaryComponent(vevent);
 
       return {
         id: event.uid || Math.random().toString(36),
@@ -41,7 +65,8 @@ export const parseIcs = (icsString: string): CalendarEvent[] => {
         end: event.endDate ? toDate(event.endDate) : undefined,
         location: event.location || undefined,
         description: event.description || undefined,
-        type: isAllDay ? 'anniversary' : 'event',
+        type: isAnniversary ? 'anniversary' : 'event',
+        allDay: isAllDay,
       };
     });
   } catch (error) {
@@ -56,7 +81,8 @@ export const exportEventsToIcs = (events: CalendarEvent[]): string => {
   vcalendar.updatePropertyWithValue('version', '2.0');
 
   events.forEach((item) => {
-    const isAllDay = item.type === 'anniversary';
+    const isAnniversary = item.type === 'anniversary';
+    const isAllDay = item.allDay ?? isAnniversary;
     const vevent = new ICAL.Component('vevent');
     vevent.updatePropertyWithValue('uid', item.id || Math.random().toString(36));
     vevent.updatePropertyWithValue('summary', item.summary);
@@ -94,6 +120,12 @@ export const exportEventsToIcs = (events: CalendarEvent[]): string => {
 
     if (isAllDay) {
       vevent.updatePropertyWithValue('transp', 'TRANSPARENT');
+    }
+
+    if (isAnniversary) {
+      // Tag to make timed anniversaries importable as anniversaries.
+      vevent.updatePropertyWithValue('categories', 'ANNIVERSARY');
+      vevent.updatePropertyWithValue('x-minical-type', 'ANNIVERSARY');
     }
 
     vcalendar.addSubcomponent(vevent);

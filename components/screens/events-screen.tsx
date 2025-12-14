@@ -19,6 +19,21 @@ type EventGroup = {
   events: CalendarEvent[];
 };
 
+const pad2 = (value: number) => String(value).padStart(2, '0');
+const formatTime = (date: Date) => `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+
+const deriveAllDay = (event: CalendarEvent): boolean => {
+  if (typeof event.allDay === 'boolean') return event.allDay;
+  if (event.type !== 'anniversary') return false;
+  return event.start.getHours() === 0 && event.start.getMinutes() === 0 && !event.end;
+};
+
+const formatEventTime = (event: CalendarEvent): string => {
+  if (deriveAllDay(event)) return '全天';
+  if (event.end) return `${formatTime(event.start)}–${formatTime(event.end)}`;
+  return formatTime(event.start);
+};
+
 export default function EventsScreen() {
   const colorScheme = useColorScheme() ?? 'light';
   const theme = Colors[colorScheme];
@@ -49,7 +64,9 @@ export default function EventsScreen() {
 
     const groups = Array.from(map.values());
     groups.forEach((group) => group.events.sort(sortByStartAsc));
-    return groups.sort((a, b) => a.date.getTime() - b.date.getTime());
+    return groups
+      .filter((group) => group.events.some((event) => event.type === 'anniversary'))
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
   }, [events, today]);
 
   return (
@@ -58,7 +75,7 @@ export default function EventsScreen() {
         <ThemedText type="title" style={styles.title}>
           事件
         </ThemedText>
-        <ThemedText style={[styles.subtitle, { color: theme.icon }]}>仅展示有事件的未来日期</ThemedText>
+        <ThemedText style={[styles.subtitle, { color: theme.icon }]}>仅展示有纪念日的日期（展开查看当天事件）</ThemedText>
       </View>
 
       <FlatList
@@ -84,7 +101,7 @@ export default function EventsScreen() {
               </View>
 
               <View style={styles.eventList}>
-                {item.events.slice(0, 3).map((event) => (
+                {item.events.map((event) => (
                   <View key={event.id} style={styles.eventRow}>
                     <View
                       style={[
@@ -99,16 +116,28 @@ export default function EventsScreen() {
                         },
                       ]}
                     />
-                    <ThemedText numberOfLines={1}>{event.summary}</ThemedText>
+                    <View style={styles.eventContent}>
+                      <View style={styles.eventTop}>
+                        <ThemedText numberOfLines={1} type="defaultSemiBold" style={styles.eventTitle}>
+                          {event.summary}
+                        </ThemedText>
+                        <ThemedText style={[styles.eventTime, { color: theme.icon }]}>{formatEventTime(event)}</ThemedText>
+                      </View>
+                      {event.description ? (
+                        <ThemedText numberOfLines={1} style={[styles.eventDescription, { color: theme.icon }]}>
+                          {event.description}
+                        </ThemedText>
+                      ) : null}
+                    </View>
                   </View>
                 ))}
-                {item.events.length > 3 ? (
-                  <ThemedText style={[styles.moreText, { color: theme.icon }]}>…更多</ThemedText>
-                ) : null}
               </View>
             </View>
           );
         }}
+        ListEmptyComponent={
+          <ThemedText style={{ color: theme.icon }}>暂无纪念日。请在“日历”里长按日期或点“+”添加。</ThemedText>
+        }
       />
     </SafeAreaPage>
   );

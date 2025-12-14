@@ -5,14 +5,15 @@ This document is the working spec and conventions for the Minimal Calendar app (
 A minimal, educational-grade cross-platform calendar app that:
 - Shows a monthly grid calendar.
 - Supports selecting a date to view items for that day.
-- Supports creating/editing/deleting a single “anniversary” per day (all‑day event).
+- Supports creating/editing/deleting multiple “anniversaries” per day (all‑day or timed range).
 - Supports importing/exporting anniversaries as `.ics` (iCalendar) files.
-- Provides a second tab that lists future dates that have events (no empty dates).
+- Provides a second tab that groups by dates that have anniversaries.
 
 No backend. All logic is client-side.
 
 ## Project Structure (current)
 
+```plain text
 MyCalendarApp/
 ├── app/                           # Expo Router routes
 │   ├── _layout.tsx                # Providers + stack
@@ -34,6 +35,7 @@ MyCalendarApp/
     ├── calendarUtils.ts           # Date math + keys
     ├── colorUtils.ts              # Small styling helpers
     └── icalUtils.ts               # ICS parse/export via ical.js
+```
 
 ## Core Dependencies
 
@@ -58,18 +60,20 @@ export interface CalendarEvent {
 ```
 
 Conventions:
-- `type: 'anniversary'` is treated as all-day (DATE in ICS).
-- Anniversaries use a stable id: `anniversary-YYYY-MM-DD` to avoid duplicate list keys.
+- `type: 'anniversary'` can be all-day (DATE) or timed (DATE-TIME); see `allDay`.
+- Export tags anniversaries with `CATEGORIES:ANNIVERSARY` and `X-MINICAL-TYPE:ANNIVERSARY` so timed anniversaries can round-trip via ICS.
 
 ## Key Flows
 
 - Calendar tab (`components/screens/calendar-screen.tsx`)
   - Tap a date to select.
+  - Long-press a date to open the editor modal.
   - Header actions: import anniversaries, export anniversaries, add/edit anniversary (modal).
 - Modal (`components/screens/anniversary-modal-screen.tsx`)
-  - Edit title + optional note; delete is available if one exists for that date.
+  - List all anniversaries for the date; select to edit; create new; delete.
+  - Time mode is mutually exclusive: all-day vs start/end time.
 - Events tab (`components/screens/events-screen.tsx`)
-  - Groups future events by date and only renders dates that have events.
+  - Renders only dates that have anniversaries; shows all events for that date.
 
 ## Engineering Guidelines
 

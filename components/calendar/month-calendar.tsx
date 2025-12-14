@@ -16,6 +16,7 @@ interface MonthCalendarProps {
   events?: CalendarEvent[];
   selectedDate?: Date;
   onSelectDate?: (date: Date) => void;
+  onLongPressDate?: (date: Date) => void;
   headerRight?: React.ReactNode;
 }
 
@@ -43,6 +44,7 @@ export function Calendar({
   events,
   selectedDate,
   onSelectDate,
+  onLongPressDate,
   headerRight,
 }: MonthCalendarProps) {
   const colorScheme = useColorScheme() ?? 'light';
@@ -59,6 +61,8 @@ export function Calendar({
 
   const handlePrev = () => setCursor((prev) => startOfDay(new Date(prev.getFullYear(), prev.getMonth() - 1, 1)));
   const handleNext = () => setCursor((prev) => startOfDay(new Date(prev.getFullYear(), prev.getMonth() + 1, 1)));
+
+  const lastLongPressDateKey = React.useRef<string | null>(null);
 
   return (
     <View style={styles.container}>
@@ -116,9 +120,18 @@ export function Calendar({
           return (
             <Pressable
               onPress={() => {
+                if (lastLongPressDateKey.current === dateKey) {
+                  lastLongPressDateKey.current = null;
+                  return;
+                }
                 onSelectDate?.(date);
                 if (!item.isCurrentMonth) setCursor(startOfDay(new Date(date.getFullYear(), date.getMonth(), 1)));
               }}
+              onLongPress={() => {
+                lastLongPressDateKey.current = dateKey;
+                onLongPressDate?.(date);
+              }}
+              delayLongPress={350}
               style={({ pressed }) => [
                 styles.cell,
                 { borderColor: cellBorderColor },

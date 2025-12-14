@@ -41,13 +41,34 @@ export const styles = StyleSheet.create({
   },
   eventRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     gap: 10,
+  },
+  eventContent: {
+    flex: 1,
+    gap: 4,
+  },
+  eventTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
+  },
+  eventTitle: {
+    flex: 1,
+    fontSize: 15,
+  },
+  eventTime: {
+    fontSize: 13,
+  },
+  eventDescription: {
+    fontSize: 13,
   },
   dot: {
     width: 8,
     height: 8,
     borderRadius: 4,
+    marginTop: 6,
   },
   emptyText: {
     fontSize: 13,
@@ -57,4 +78,3 @@ export const styles = StyleSheet.create({
     marginLeft: 18,
   },
 });
-

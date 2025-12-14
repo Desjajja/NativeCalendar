@@ -10,6 +10,7 @@ export function IconActionButton({
   label,
   backgroundColor,
   size = 20,
+  weight,
 }: {
   name: Parameters<typeof IconSymbol>[0]['name'];
   onPress: () => void;
@@ -17,6 +18,7 @@ export function IconActionButton({
   label: string;
   backgroundColor?: string;
   size?: number;
+  weight?: Parameters<typeof IconSymbol>[0]['weight'];
 }) {
   return (
     <Pressable
@@ -29,7 +31,7 @@ export function IconActionButton({
         pressed ? styles.buttonPressed : null,
       ]}
       hitSlop={8}>
-      <IconSymbol name={name} size={size} color={color} />
+      <IconSymbol name={name} size={size} color={color} weight={weight} />
     </Pressable>
   );
 }
@@ -46,4 +48,3 @@ const styles = StyleSheet.create({
     opacity: 0.72,
   },
 });
-

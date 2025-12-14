@@ -41,6 +41,11 @@ export default function CalendarScreen() {
     router.push({ pathname: '/modal', params: { date: toDateKey(selectedDate) } });
   };
 
+  const openAnniversaryEditorForDate = (date: Date) => {
+    setSelectedDate(startOfDay(date));
+    router.push({ pathname: '/modal', params: { date: toDateKey(date) } });
+  };
+
   const importAnniversaries = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({ type: ['text/calendar', '*/*'], copyToCacheDirectory: true });
@@ -106,6 +111,8 @@ export default function CalendarScreen() {
         color={theme.icon}
         label="导入纪念日"
         backgroundColor={actionBackgroundColor}
+        size={22}
+        weight="semibold"
       />
       <IconActionButton
         name="square.and.arrow.up"
@@ -113,6 +120,8 @@ export default function CalendarScreen() {
         color={theme.icon}
         label="导出纪念日"
         backgroundColor={actionBackgroundColor}
+        size={22}
+        weight="semibold"
       />
       <IconActionButton
         name="plus"
@@ -120,6 +129,8 @@ export default function CalendarScreen() {
         color={theme.icon}
         label="新增纪念日"
         backgroundColor={actionBackgroundColor}
+        size={22}
+        weight="semibold"
       />
     </>
   );
@@ -131,6 +142,7 @@ export default function CalendarScreen() {
           events={events}
           selectedDate={selectedDate}
           onSelectDate={setSelectedDate}
+          onLongPressDate={openAnniversaryEditorForDate}
           headerRight={headerRight}
         />
       </View>

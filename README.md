@@ -2,9 +2,9 @@
 
 A minimal calendar app built with Expo Router, featuring:
 - Monthly grid calendar with selectable dates
-- Anniversary CRUD (all-day events)
+- Anniversary CRUD (all-day or timed range)
 - Anniversary import/export as `.ics` via ical.js
-- “Events” tab listing only future dates that have events
+- “Events” tab grouping by dates that have anniversaries
 
 ## Run
 
@@ -18,6 +18,7 @@ npx expo start
 ### Calendar tab (日历)
 
 - Tap a date to select it.
+- Long-press a date to open the anniversary editor directly.
 - Top-right actions:
   - Download icon: import anniversaries from an `.ics` file
   - Upload icon: export anniversaries to an `.ics` file (share sheet)
@@ -26,12 +27,15 @@ npx expo start
 ### Anniversary modal (纪念日)
 
 - Title is required, note is optional.
-- One anniversary per date (import also dedupes by date).
+- One date can contain multiple anniversaries.
+- Time mode:
+  - `全天` and `时间段` are mutually exclusive.
+  - Switching to `全天` clears and disables the time fields.
 
 ### Events tab (事件)
 
-- Shows only future dates (>= today) that actually have events/anniversaries.
-- Groups items by date and shows up to 3 per day (with “…更多” if more).
+- Shows only future dates (>= today) that have anniversaries.
+- Each date expands to show all events on that day (name / note / time or all-day).
 
 ## Notes
 
