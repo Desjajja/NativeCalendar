@@ -1,11 +1,14 @@
 # Minimal Calendar (Expo + TypeScript)
 
 一个使用 Expo Router 构建的简约日历应用，功能包括：
-- 日历视图：月视图 / 周视图 / 日视图
-- 纪念日的增删改查（全天或时间段）
-- 使用 ical.js 导入/导出 `.ics` 格式的纪念日
-- 可选的本地提醒功能（通过 `expo-notifications` 实现）
-- “事件”标签页，按日期分组显示有纪念日的日期
+- 基础功能：
+- [x] 日历视图展示（月视图、周视图、日视图）；
+- [x] 日程添加、编辑、查看和删除；
+- [x] 日程提醒功能的实现；
+---
+- 扩展功能：
+- [x] 使用 ical.js 导入/导出 `.ics` 格式的纪念日
+- [x] “事件”标签页，按日期分组显示有纪念日的日期
 
 ## 运行
 
@@ -59,3 +62,19 @@ npx expo start
 - `utils/icalUtils.ts` ICS 解析/导出（ical.js）
 - `utils/notifications.ts` 本地提醒调度
 - `utils/calendarUtils.ts` 日历网格 + 日期助手
+
+## 功能演示视频
+月/周/日切换 + 日程设置 + 导入/导出
+
+https://github.com/user-attachments/assets/49ee9391-8937-4b5d-bd91-c47cc6212563
+
+
+日程提醒
+
+https://github.com/user-attachments/assets/798abcc8-0374-4472-820b-24b883a6c610
+
+
+
+
+
+
